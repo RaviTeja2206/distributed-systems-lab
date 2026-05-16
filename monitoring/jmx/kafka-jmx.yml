@@ -1,0 +1,19 @@
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # Kafka server metrics
+  - pattern: "kafka.server<type=(.+), name=(.+)><>Value"
+    name: kafka_server_$1_$2
+
+  # Kafka network metrics
+  - pattern: "kafka.network<type=(.+), name=(.+)><>Value"
+    name: kafka_network_$1_$2
+
+  # Kafka log metrics
+  - pattern: "kafka.log<type=(.+), name=(.+)><>Value"
+    name: kafka_log_$1_$2
+
+  # JVM metrics (very important)
+  - pattern: "java.lang<type=(.+), name=(.+)><>Value"
+    name: java_lang_$1_$2
