@@ -1,16 +1,16 @@
+# my global config
 global:
   scrape_interval: 15s
+  evaluation_interval: 30s
 
 scrape_configs:
+  - job_name: kafka_exports
 
-  - job_name: "kafka-jmx"
+    static_configs:
+      - targets: ["kafka-1:9101", "kafka-2:9102", "kafka-3:9103"]
+
+  - job_name: prometheus
+    metrics_path: /metrics
     static_configs:
       - targets:
-          - kafka-1:9101
-          - kafka-2:9102
-          - kafka-3:9103
-
-  - job_name: "kafka-exporter"
-    static_configs:
-      - targets:
-          - kafka-exporter:9308
+          - localhost:9090
