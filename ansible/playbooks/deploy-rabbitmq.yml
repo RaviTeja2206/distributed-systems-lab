@@ -1,0 +1,18 @@
+---
+- name: Deploy RabbitMQ cluster
+  hosts: rabbitmq_nodes
+  become: true
+  serial: 1
+  # serial: 1 means run the entire play on ONE node at a time
+  # node-1 completes fully before node-2 starts
+  # This ensures node-1 is ready before node-2 tries to join it
+  # This is the Ansible equivalent of our healthcheck dependency chain
+
+  roles:
+    - rabbitmq
+
+  handlers:
+    - name: restart rabbitmq
+      service:
+        name: rabbitmq-server
+        state: restarted

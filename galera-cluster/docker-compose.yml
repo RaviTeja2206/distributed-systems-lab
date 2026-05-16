@@ -1,0 +1,86 @@
+networks:
+  galera-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.20.0.0/24
+
+services:
+  galera-1:
+    image: mariadb:10.11
+    hostname: galera-1
+    networks:
+      galera-net:
+        ipv4_address: 10.20.0.11
+    environment:
+      MYSQL_ROOT_PASSWORD: labpassword
+      MYSQL_DATABASE: labdb
+      MYSQL_USER: labuser
+      MYSQL_PASSWORD: labpassword
+    volumes:
+      - galera-1-data:/var/lib/mysql
+      - ./galera.cnf:/etc/mysql/conf.d/galera.cnf
+      - ./bootstrap.sh:/bootstrap.sh
+    entrypoint: /bootstrap.sh
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mariadb", "-uroot", "-plabpassword",
+             "-e", "SHOW STATUS LIKE 'wsrep_local_state_comment'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  galera-2:
+    image: mariadb:10.11
+    hostname: galera-2
+    networks:
+      galera-net:
+        ipv4_address: 10.20.0.12
+    environment:
+      MYSQL_ROOT_PASSWORD: labpassword
+    volumes:
+      - galera-2-data:/var/lib/mysql
+      - ./galera.cnf:/etc/mysql/conf.d/galera.cnf
+      - ./node.sh:/node.sh
+    entrypoint: ["/node.sh", "galera-2"]
+    depends_on:
+      galera-1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "mariadb", "-uroot", "-plabpassword",
+             "-e", "SHOW STATUS LIKE 'wsrep_local_state_comment'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  galera-3:
+    image: mariadb:10.11
+    hostname: galera-3
+    networks:
+      galera-net:
+        ipv4_address: 10.20.0.13
+    environment:
+      MYSQL_ROOT_PASSWORD: labpassword
+    volumes:
+      - galera-3-data:/var/lib/mysql
+      - ./galera.cnf:/etc/mysql/conf.d/galera.cnf
+      - ./node.sh:/node.sh
+    entrypoint: ["/node.sh", "galera-3"]
+    depends_on:
+      galera-2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "mariadb", "-uroot", "-plabpassword",
+             "-e", "SHOW STATUS LIKE 'wsrep_local_state_comment'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  galera-1-data:
+  galera-2-data:
+  galera-3-data:

@@ -1,0 +1,152 @@
+# docker-compose-consul.yml
+
+networks:
+  consul-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.30.0.0/24
+
+services:
+  consul-1:
+    image: hashicorp/consul:1.15
+    hostname: consul-1
+    networks:
+      consul-net:
+        ipv4_address: 10.30.0.11
+    command: >
+      consul agent
+        -server
+        -bootstrap-expect=3
+        -node=consul-1
+        -bind=10.30.0.11
+        -client=0.0.0.0
+        -retry-join=10.30.0.11
+        -retry-join=10.30.0.12
+        -retry-join=10.30.0.13
+        -ui
+        -data-dir=/consul/data
+    ports:
+      - "8500:8500"
+    volumes:
+      - consul-1-data:/consul/data
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  consul-2:
+    image: hashicorp/consul:1.15
+    hostname: consul-2
+    networks:
+      consul-net:
+        ipv4_address: 10.30.0.12
+    command: >
+      consul agent
+        -server
+        -bootstrap-expect=3
+        -node=consul-2
+        -bind=10.30.0.12
+        -client=0.0.0.0
+        -retry-join=10.30.0.11
+        -retry-join=10.30.0.12
+        -retry-join=10.30.0.13
+        -data-dir=/consul/data
+    volumes:
+      - consul-2-data:/consul/data
+
+  consul-3:
+    image: hashicorp/consul:1.15
+    hostname: consul-3
+    networks:
+      consul-net:
+        ipv4_address: 10.30.0.13
+    command: >
+      consul agent
+        -server
+        -bootstrap-expect=3
+        -node=consul-3
+        -bind=10.30.0.13
+        -client=0.0.0.0
+        -retry-join=10.30.0.11
+        -retry-join=10.30.0.12
+        -retry-join=10.30.0.13
+        -data-dir=/consul/data
+    volumes:
+      - consul-3-data:/consul/data
+
+  # Simulated RabbitMQ service — registers itself with Consul
+  # In real life RabbitMQ registers via its Consul plugin or a sidecar
+  # Here we simulate registration using consul CLI to learn the concept
+  service-registrar:
+    image: hashicorp/consul:1.15
+    networks:
+      consul-net:
+    depends_on:
+      consul-1:
+        condition: service_healthy
+    command: >
+      bash -c "
+        sleep 5 &&
+        echo 'Registering simulated services with Consul...' &&
+
+        consul services register -http-addr=http://10.30.0.11:8500 - << 'EOF'
+        {
+          \"ID\": \"rabbitmq-1\",
+          \"Name\": \"rabbitmq\",
+          \"Address\": \"10.30.0.21\",
+          \"Port\": 5672,
+          \"Tags\": [\"messaging\", \"amqp\"],
+          \"Check\": {
+            \"ID\": \"rabbitmq-1-check\",
+            \"Name\": \"RabbitMQ TCP check\",
+            \"TCP\": \"10.30.0.21:5672\",
+            \"Interval\": \"10s\",
+            \"Timeout\": \"3s\"
+          }
+        }
+        EOF
+
+        consul services register -http-addr=http://10.30.0.11:8500 - << 'EOF'
+        {
+          \"ID\": \"rabbitmq-2\",
+          \"Name\": \"rabbitmq\",
+          \"Address\": \"10.30.0.22\",
+          \"Port\": 5672,
+          \"Tags\": [\"messaging\", \"amqp\"],
+          \"Check\": {
+            \"ID\": \"rabbitmq-2-check\",
+            \"Name\": \"RabbitMQ TCP check\",
+            \"TCP\": \"10.30.0.22:5672\",
+            \"Interval\": \"10s\",
+            \"Timeout\": \"3s\"
+          }
+        }
+        EOF
+
+        consul services register -http-addr=http://10.30.0.11:8500 - << 'EOF'
+        {
+          \"ID\": \"galera-1\",
+          \"Name\": \"mariadb\",
+          \"Address\": \"10.30.0.31\",
+          \"Port\": 3306,
+          \"Tags\": [\"database\", \"galera\"],
+          \"Check\": {
+            \"ID\": \"galera-1-check\",
+            \"Name\": \"MariaDB TCP check\",
+            \"TCP\": \"10.30.0.31:3306\",
+            \"Interval\": \"10s\",
+            \"Timeout\": \"3s\"
+          }
+        }
+        EOF
+
+        echo 'Services registered. Consul cluster ready.'
+      "
+
+volumes:
+  consul-1-data:
+  consul-2-data:
+  consul-3-data:

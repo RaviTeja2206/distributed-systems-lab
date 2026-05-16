@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Environment files — never commit real credentials
+.env
+*.env
+
+# macOS
+.DS_Store
+
+# Docker volumes (if accidentally created locally)
+data/
+
+# Ansible retry files
+*.retry
+
+# Editor
+.vscode/
+.idea/

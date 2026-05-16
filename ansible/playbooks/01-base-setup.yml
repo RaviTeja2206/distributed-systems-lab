@@ -1,0 +1,77 @@
+---
+# This playbook runs against all nodes and sets up base configuration
+# Run with: ansible-playbook playbooks/01-base-setup.yml
+#
+# Key concepts demonstrated:
+#   - tasks: individual steps executed in order
+#   - modules: ansible built-ins (apt, user, template, service, command)
+#   - variables: referenced with {{ variable_name }}
+#   - handlers: tasks that run only when notified (e.g. restart service)
+#   - idempotency: safe to run multiple times, same result
+
+- name: Base node setup
+  hosts: all_nodes
+  become: true  # run as sudo/root
+
+  vars:
+    lab_user: labuser
+    lab_packages:
+      - curl
+      - wget
+      - net-tools
+      - htop
+      - vim
+
+  handlers:
+    # Handlers only run when notified by a task
+    # and only run once even if notified multiple times
+    - name: restart ssh
+      service:
+        name: ssh
+        state: restarted
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600  # only update if cache is older than 1 hour
+                                # this is idempotency in action
+
+    - name: Install base packages
+      apt:
+        name: "{{ lab_packages }}"
+        state: present  # 'present' = install if not there, do nothing if already installed
+                        # this is different from 'latest' which always upgrades
+
+    - name: Create lab user
+      user:
+        name: "{{ lab_user }}"
+        shell: /bin/bash
+        create_home: yes
+        state: present
+
+    - name: Create lab directory
+      file:
+        path: /opt/lab
+        state: directory
+        owner: "{{ lab_user }}"
+        mode: '0755'
+
+    - name: Deploy node identification file
+      copy:
+        content: |
+          NODE_NAME={{ inventory_hostname }}
+          NODE_IP={{ ansible_host }}
+          DEPLOYED_BY=ansible
+        dest: /opt/lab/node-info.txt
+        owner: "{{ lab_user }}"
+        mode: '0644'
+
+    - name: Verify node info file exists
+      command: cat /opt/lab/node-info.txt
+      register: node_info_output  # saves command output to a variable
+      changed_when: false         # this task never counts as a change
+
+    - name: Show node info
+      debug:
+        msg: "{{ node_info_output.stdout_lines }}"

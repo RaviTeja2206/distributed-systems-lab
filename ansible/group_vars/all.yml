@@ -1,0 +1,24 @@
+# Variables available to all playbooks
+# This is where you change values for different environments
+# without touching the playbook logic
+
+rabbitmq_version: "3.12"
+rabbitmq_user: "admin"
+rabbitmq_password: "labpassword"
+rabbitmq_erlang_cookie: "LEARNINGCLUSTERCOOKIE"
+rabbitmq_cluster_name: "lab-cluster"
+
+galera_root_password: "labpassword"
+galera_cluster_name: "lab-galera"
+galera_cluster_nodes: "10.40.0.11,10.40.0.12,10.40.0.13"
+
+consul_version: "1.15.4"
+consul_datacenter: "dc1"
+consul_bootstrap_expect: 3
+consul_nodes:
+  - name: node-1
+    ip: 10.40.0.11
+  - name: node-2
+    ip: 10.40.0.12
+  - name: node-3
+    ip: 10.40.0.13
